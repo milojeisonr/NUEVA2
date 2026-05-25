@@ -16,12 +16,20 @@ extern long distanciaFront;
 extern long distanciaLeft;
 extern long distanciaRight;
 
+// 🆕 === Variables de memoria de giros ===
+extern int memoriaGiros[10];
+extern int indiceMemoria;
+extern int giroConsecutivos;
+
 // === Funciones principales ===
 void iniciarSensores();
 long medirDistancia(int trigPin, int echoPin);
 long medirPromedio(int trig, int echo);
 void ajustarVelocidad(long dFront);
 void correccionTrayectoria(long dIzq, long dDer);
+
+// 🆕 === Función de guardar giro ===
+void guardarGiro(int direccion);  // 0=izq, 1=der, 2=centro
 
 // === Funciones de memoria y entorno (opcional) ===
 void guardarMemoria(int obstaculo);
