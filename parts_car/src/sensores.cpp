@@ -8,9 +8,14 @@ long distanciaFront = 0;
 long distanciaLeft  = 0;
 long distanciaRight = 0;
 
+// 🆕 Memoria de giros para detección de atrapamiento
+int memoriaGiros[10];
+int indiceMemoria = 0;
+int giroConsecutivos = 0;
+
 // Memoria de obstáculos
 int memoria[10];
-int indiceMemoria = 0;
+int indiceMemoria_obstaculos = 0;
 
 // Variables auxiliares
 unsigned long ultimaReevaluacion = 0;
@@ -24,7 +29,12 @@ void iniciarSensores() {
   pinMode(TRIG_RIGHT, OUTPUT);
   pinMode(ECHO_RIGHT, INPUT);
 
-  Serial.println("Sensores ultrasónicos listos");
+  // Inicializar memoria de giros
+  memset(memoriaGiros, 0, sizeof(memoriaGiros));
+  indiceMemoria = 0;
+  giroConsecutivos = 0;
+
+  Serial.println("✅ Sensores ultrasónicos listos");
 }
 
 // ===== LECTURA DE DISTANCIA =====
@@ -41,7 +51,7 @@ long medirDistancia(int trigPin, int echoPin) {
   if (distancia <= 0 || distancia > 400) distancia = 999;
   delay(60);
 
-  Serial.print("Pin TRIG: ");
+  Serial.print("📏 Pin TRIG: ");
   Serial.print(trigPin);
   Serial.print(" → ");
   Serial.print(distancia);
@@ -60,9 +70,20 @@ long medirPromedio(int trig, int echo) {
 }
 
 // ===== MEDICIONES DIRECTAS =====
-long medirDistanciaFront() { return medirPromedio(TRIG_FRONT, ECHO_FRONT); }
-long medirDistanciaLeft()  { return medirPromedio(TRIG_LEFT, ECHO_LEFT); }
-long medirDistanciaRight() { return medirPromedio(TRIG_RIGHT, ECHO_RIGHT); }
+long medirDistanciaFront() { 
+  distanciaFront = medirPromedio(TRIG_FRONT, ECHO_FRONT);
+  return distanciaFront;
+}
+
+long medirDistanciaLeft() {
+  distanciaLeft = medirPromedio(TRIG_LEFT, ECHO_LEFT);
+  return distanciaLeft;
+}
+
+long medirDistanciaRight() {
+  distanciaRight = medirPromedio(TRIG_RIGHT, ECHO_RIGHT);
+  return distanciaRight;
+}
 
 // ===== AJUSTE DE VELOCIDAD SEGÚN OBSTÁCULO FRONTAL =====
 void ajustarVelocidad(long dFront) {
@@ -87,10 +108,22 @@ void correccionTrayectoria(long dIzq, long dDer) {
   }
 }
 
+// 🆕 ===== GUARDAR GIRO EN MEMORIA =====
+// Registra cada giro (0=izq, 1=der, 2=centro)
+void guardarGiro(int direccion) {
+  memoriaGiros[indiceMemoria] = direccion;
+  indiceMemoria = (indiceMemoria + 1) % 10;
+  giroConsecutivos++;
+  
+  Serial.printf("📍 Giro registrado: %s (Total: %d)\n", 
+    (direccion == 0) ? "IZQ" : (direccion == 1) ? "DER" : "CENTRO",
+    giroConsecutivos);
+}
+
 // ===== GUARDAR MEMORIA DE OBSTÁCULOS =====
 void guardarMemoria(int obstaculo) {
-  memoria[indiceMemoria] = obstaculo;
-  indiceMemoria = (indiceMemoria + 1) % 10;
+  memoria[indiceMemoria_obstaculos] = obstaculo;
+  indiceMemoria_obstaculos = (indiceMemoria_obstaculos + 1) % 10;
 }
 
 // ===== DETECTAR ZONA BLOQUEADA =====
@@ -124,6 +157,7 @@ int escanearEntorno() {
   }
 
   moverServo(90); // volver al centro
+  Serial.printf("🔍 Mejor ángulo: %d° (distancia: %ld cm)\n", mejorAngulo, mejorDist);
   return mejorAngulo;
 }
 
@@ -132,13 +166,13 @@ extern bool modoReal; // 👈 Importa la variable global
 int leerMQ135() {
   if (modoReal) {
       int valor = analogRead(MQ135_PIN);
-      Serial.print("Lectura MQ135: ");
+      Serial.print("🌡️ Lectura MQ135 (REAL): ");
       Serial.println(valor);
       return valor;
   } else {
       // Simulación de datos
       int simulado = random(200, 500);
-      Serial.print("Lectura simulada MQ135: ");
+      Serial.print("🧪 Lectura MQ135 (SIMULADA): ");
       Serial.println(simulado);
       return simulado;
   }
@@ -147,4 +181,5 @@ int leerMQ135() {
 void iniciarMQ135() {
   // No necesita inicialización especial en ESP32 (ADC ya disponible),
   // pero dejamos la función para conservar la API y futuras configuraciones.
+  Serial.println("✅ MQ135 inicializado (modo simulación por defecto)");
 }
