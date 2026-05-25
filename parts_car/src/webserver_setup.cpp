@@ -155,7 +155,7 @@ void setupWebServer() {
     }
   });
 
-  // --- Establecer preset de velocidad (1..3) para MANUAL ---
+  // 🆕 --- Establecer preset de velocidad (1..3) para MANUAL o AUTÓNOMO ---
   server.on("/setSpeedLevel", HTTP_GET, [](AsyncWebServerRequest *request) {
     if (!request->hasParam("mode") || !request->hasParam("level")) {
       request->send(400, "text/plain", "Falta parámetro 'mode' o 'level'");
@@ -170,13 +170,23 @@ void setupWebServer() {
 
     String mode = request->getParam("mode")->value();
     int level = request->getParam("level")->value().toInt();
-    bool auton = (mode == "autonomo");
+    
     if (level < 1 || level > 3) {
       request->send(400, "text/plain", "Level debe ser 1..3");
       return;
     }
 
-    setPresetSpeed(auton, level);
+    // Determinar si es modo autónomo
+    bool auton = (mode == "autonomo");
+    
+    if (auton) {
+      // Para modo autónomo, usar la función específica
+      setPresetVelocidadAutonoma(level);
+    } else {
+      // Para modo manual, usar setPresetSpeed
+      setPresetSpeed(false, level);
+    }
+    
     lastSpeedChange = now;
     Serial.printf("⚙️ Preset velocidad aplicado: modo=%s nivel=%d\n", mode.c_str(), level);
     request->send(200, "text/plain", "ok");
@@ -372,6 +382,14 @@ void setupWebServer() {
     else {
       request->send(400, "text/plain", "Valor invalido (use on/off)");
     }
+  });
+
+  // 🆕 --- Ruta para obtener estado del ventilador ---
+  server.on("/getVentilador", HTTP_GET, [](AsyncWebServerRequest *request) {
+    char json[64];
+    snprintf(json, sizeof(json), "{\"ventilador\":%s}", 
+      ventiladorEncendido ? "true" : "false");
+    request->send(200, "application/json", json);
   });
 
   server.begin();
