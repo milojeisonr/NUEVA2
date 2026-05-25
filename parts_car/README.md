@@ -1,103 +1,407 @@
-# Carro Robótico con ESP32
+# 🤖 Carro Robótico Autónomo con ESP32
 
-Este proyecto es un carro robótico basado en ESP32 que puede operar en modo manual y modo autónomo. Utiliza un servidor web embebido para controlar el vehículo desde un navegador y leer sensores ultrasónicos y un sensor de gas MQ135.
+## 📋 Descripción General
 
-## Funcionalidad principal
+Este es un **carro robótico inteligente basado en ESP32** que puede operar en dos modos:
+- **Modo Manual**: Control desde navegador web con interfaz gráfica
+- **Modo Autónomo**: Navegación inteligente con evitación de obstáculos y mapeo espacial
 
-- Control manual por web mediante botones y joystick.
-- Modo autónomo con lógica de evitación de obstáculos y giro automático.
-- Lectura de tres sensores ultrasónicos: frontal, izquierdo y derecho.
-- Lectura de sensor MQ135 (modo real o simulado).
-- Control de un servo para escaneo y un relé para encendido de ventilador/purificador.
-- Interfaz web servida desde SPIFFS.
+El robot utiliza **3 sensores ultrasónicos** para detectar obstáculos, **servo para escaneo**, **relé para control de ventilador/purificador**, y un **sensor MQ135** para detección de gases (simulado o real).
 
-## Componentes del proyecto
+---
 
-- `src/main.cpp` - Inicializa WiFi, SPIFFS, servidor web y hardware.
-- `src/webserver_setup.cpp` - Define rutas HTTP para control, modo, sensores y actuadores.
-- `src/modo_autonomo.cpp` - Implementa la lógica de conducción autónoma.
-- `src/motores.cpp` - Maneja los motores, PWM y comandos de movimiento.
-- `src/sensores.cpp` - Lee los sensores ultrasónicos y el MQ135.
-- `src/servo_rele.cpp` - Controla el servo y el relé del ventilador.
-- `include/` - Contiene los encabezados con las APIs públicas.
-- `data/` - Archivos web estáticos servidos desde SPIFFS.
+## ✨ Características Principales
 
-## Conexiones de hardware
+✅ **Control Manual Web**: Botones y joystick en navegador  
+✅ **Modo Autónomo Inteligente**: 8 estados de máquina con lógica avanzada  
+✅ **Mapeo Espacial**: Sistema de grid 20x20 con confianza de celdas  
+✅ **Detección de Atrapamiento**: Prevención automática de loops infinitos  
+✅ **Velocidad Adaptativa**: Ajuste dinámico según obstáculos  
+✅ **Filtrado de Sensores**: Media exponencial para suavizar lecturas  
+✅ **Servo Escaneo**: 3 puntos (izq, centro, der) para decisiones inteligentes  
+✅ **Histéresis Inteligente**: Evita oscilaciones entre estados  
+✅ **MQ135 Real/Simulado**: Toggle entre lectura real y simulación  
 
-### Motor driver / ruedas
-- `IN1` (ESP32 GPIO25) -> entrada 1 del controlador H-bridge
-- `IN2` (ESP32 GPIO26) -> entrada 2 del controlador H-bridge
-- `IN3` (ESP32 GPIO32) -> entrada 3 del controlador H-bridge
-- `IN4` (ESP32 GPIO33) -> entrada 4 del controlador H-bridge
-- `ENA` (ESP32 GPIO27) -> PWM para motor A
-- `ENB` (ESP32 GPIO14) -> PWM para motor B
+---
 
-> Estos pines controlan dirección y velocidad de los dos motores. El controlador H-bridge debe tener alimentación separada para los motores y masa común con el ESP32.
+## 🏗️ Estructura del Proyecto
 
-### Sensores ultrasónicos
-- `TRIG_FRONT` (ESP32 GPIO5) -> trigger sensor frontal
-- `ECHO_FRONT` (ESP32 GPIO18) -> echo sensor frontal
-- `TRIG_LEFT` (ESP32 GPIO19) -> trigger sensor izquierdo
-- `ECHO_LEFT` (ESP32 GPIO21) -> echo sensor izquierdo
-- `TRIG_RIGHT` (ESP32 GPIO22) -> trigger sensor derecho
-- `ECHO_RIGHT` (ESP32 GPIO23) -> echo sensor derecho
+```
+parts_car/
+├── src/
+│   ├── main.cpp                    # Punto de entrada, setup() y loop()
+│   ├── webserver_setup.cpp         # Rutas HTTP y servidor AsyncWeb
+│   ├── modo_autonomo.cpp           # Máquina de 8 estados autónoma
+│   ├── motores.cpp                 # Control PWM de motores
+│   ├── sensores.cpp                # Lectura de ultrasónicos y MQ135
+│   ├── servo_rele.cpp              # Control de servo y relé
+│   └── mapa_espacios.cpp           # Sistema de mapeo 2D inteligente
+│
+├── include/
+│   ├── main.h                      # (si aplica)
+│   ├── webserver_setup.h           # Declaraciones de servidor
+│   ├── modo_autonomo.h             # Estados y funciones autónomas
+│   ├── motores.h                   # API de motores
+│   ├── sensores.h                  # API de sensores
+│   ├── servo_rele.h                # API de servo y relé
+│   └── mapa_espacios.h             # API de mapeo
+│
+├── data/                           # Archivos web estáticos (SPIFFS)
+│   ├── index.html                  # Página principal
+│   ├── control.html                # Interfaz de control manual
+│   ├── style.css                   # Estilos
+│   └── script.js                   # Lógica frontend
+│
+├── platformio.ini                  # Configuración de compilación
+└── README.md                       # Este archivo
+```
 
-### Sensor de gas MQ135
-- `MQ135_PIN` (ESP32 GPIO34) -> salida analógica MQ135
+---
 
-### Servo y relé
-- `SERVO_PIN` (ESP32 GPIO13) -> señal PWM del servo
-- `RELAY_PIN` (ESP32 GPIO17) -> control del módulo de relé
+## 🔌 Conexiones de Hardware
 
-> El relé controla el ventilador/purificador. El código asume relé activo en bajo: `LOW = encendido`, `HIGH = apagado`.
+### 🎯 Motor Driver (H-Bridge)
 
-## Cómo usar
+| Función | Pin ESP32 | Notas |
+|---------|-----------|-------|
+| IN1 (Motor A Dir) | GPIO 25 | Control dirección motor izquierdo |
+| IN2 (Motor A Dir) | GPIO 26 | Control dirección motor izquierdo |
+| IN3 (Motor B Dir) | GPIO 32 | Control dirección motor derecho |
+| IN4 (Motor B Dir) | GPIO 33 | Control dirección motor derecho |
+| ENA (Motor A PWM) | GPIO 27 | Control velocidad motor izquierdo |
+| ENB (Motor B PWM) | GPIO 14 | Control velocidad motor derecho |
 
-1. Abrir el proyecto en PlatformIO.
-2. Compilar con `pio run`.
-3. Subir el firmware al ESP32 con `pio run -t upload`.
-4. Subir los archivos SPIFFS con `pio run -t uploadfs`.
-5. Conectar un navegador a la red WiFi creada por el ESP32 (`RobotESP32`).
-6. Abrir `http://192.168.4.1` o la IP mostrada en el monitor serial.
+**Alimentación**: H-Bridge requiere 5-12V separados, GND común con ESP32
 
-## Rutas web importantes
+### 📡 Sensores Ultrasónicos (3x HC-SR04)
 
-- `/control.html` - Interfaz de control manual.
-- `/ultrasonic` - Lectura de sensores de distancia.
-- `/mq135` - Lectura de MQ135.
-- `/setMode?mode=manual` - Cambiar a modo manual.
-- `/setMode?mode=autonomo` - Cambiar a modo autónomo.
-- `/startAutonomo` - Iniciar autonomía.
-- `/stopAutonomo` - Detener autonomía.
-- `/toggleControl?state=on|off` - Activar/desactivar control manual.
-- `/ventilador?state=on|off` - Encender/apagar ventilador.
+| Sensor | TRIG | ECHO | Orientación |
+|--------|------|------|-------------|
+| Frontal | GPIO 5 | GPIO 18 | Adelante |
+| Izquierdo | GPIO 19 | GPIO 21 | Lateral izquierdo |
+| Derecho | GPIO 22 | GPIO 23 | Lateral derecho |
 
-## Posibles errores detectados
+**Alimentación**: 5V, GND común
 
-1. `data/control.html` contiene dos definiciones de la función `enviarMovimiento(...)`. Esto puede generar comportamientos inesperados en el navegador.
-2. En `data/control.html`, el enlace de regreso usa `/data/index.html`, pero el servidor SPIFFS sirve archivos desde la raíz. El enlace correcto probablemente debe ser `/index.html`.
-3. En `src/modo_autonomo.cpp`, dentro del caso `AS_FORWARD`, la línea `moverAdelante(velocidadPWM);` usa un valor PWM en lugar de un porcentaje. La función `moverAdelante()` espera porcentaje y volverá a convertirlo, lo que puede provocar velocidad máxima no deseada.
-4. `sensores.cpp` usa `pulseIn()` y `delay()` para medir distancias, lo cual bloquea el loop; en el ESP32 es funcional, pero puede afectar la responsividad del servidor y la UI.
-5. `webserver_setup.cpp` construye muchas cadenas `String` dinámicas. En ESP32 puede funcionar, pero conviene tener cuidado con la fragmentación de heap si se usa intensivamente.
-6. En `main.cpp`, las variables `ssid` y `password` se usaban de forma inconsistente y el AP tenía credenciales codificadas.
-7. `iniciarMQ135()` no se llamaba en `setup()`, aunque existe la función de inicialización del sensor.
+### 🎛️ Servo Motor
 
-## Cambios aplicados
+| Parámetro | Valor |
+|-----------|-------|
+| Pin | GPIO 13 |
+| Alimentación | 5V |
+| Ángulos | 0-180° |
+| Posiciones | 40°(Izq) / 90°(Centro) / 140°(Der) |
 
-- `data/control.html`: se eliminó la definición duplicada de `enviarMovimiento()` y se actualizó el enlace de regreso a `/index.html`.
-- `src/modo_autonomo.cpp`: se corrigió la llamada a `moverAdelante()` para usar porcentaje de velocidad en lugar de PWM.
-- `src/main.cpp`: ahora el AP usa `ssid` y `password` declarados, y se inicializa el MQ135 con `iniciarMQ135()`.
+### 🔴 Relé (Ventilador/Purificador)
 
-## Recomendaciones
+| Parámetro | Valor |
+|-----------|-------|
+| Pin | GPIO 17 |
+| Lógica | Activo en BAJO (LOW=ON, HIGH=OFF) |
+| Alimentación | 5V |
 
-- Corrige `control.html` eliminando la definición duplicada de `enviarMovimiento()`.
-- Cambia el enlace de `/data/index.html` a `/index.html`.
-- Ajusta `modo_autonomo.cpp` para pasar el porcentaje correcto a `moverAdelante()`.
-- Si planeas usar el modo MQ135 real, asegúrate de inicializar `iniciarMQ135()` y de configurar correctamente el pin ADC.
-- Considera reducir el uso de `String` en el servidor y privilegiar `char[]` o `send_P()` para evitar problemas de memoria.
+### 🌡️ Sensor MQ135 (Calidad del aire)
 
-## Notas adicionales
-        
-- El proyecto usa `ESPAsyncWebServer` y `AsyncTCP`, por lo que el loop principal no necesita `server.handleClient()`.
-- El modo autónomo está controlado por una variable global `modoAutonomoActivo` y sólo se ejecuta cuando se solicita.
-- El sistema presenta tanto modo de simulación como modo real para el sensor MQ135.
+| Parámetro | Valor |
+|-----------|-------|
+| Pin ADC | GPIO 34 |
+| Alimentación | 5V |
+| Rango | 0-4095 (ADC 12-bit) |
+
+---
+
+## 🧠 Sistema de Modo Autónomo
+
+### Estados de la Máquina (8 estados)
+
+```
+AS_IDLE
+  ↓
+AS_NAVIGATE ← (estado principal)
+  ├→ AS_ALERT (obstáculo mediano)
+  │  └→ AS_CRITICAL (obstáculo muy cercano)
+  │     └→ AS_SCANNING (escanear alternativas)
+  │
+  ├→ AS_SCANNING (3 puntos: izq/centro/der)
+  │  └→ AS_TURNING (ejecutar giro)
+  │
+  ├→ AS_BACKING (retroceder 400ms)
+  │
+  └→ AS_ESCAPE (giro 180° si atrapado)
+```
+
+### Parámetros de Distancia
+
+| Zona | Distancia | Acción |
+|------|-----------|--------|
+| **Libre** | > 45 cm | Navegar a máxima velocidad |
+| **Alerta** | 30-45 cm | Reducir velocidad 20% |
+| **Crítica** | 15-30 cm | Reducir velocidad 50% |
+| **Bloqueada** | < 15 cm | Escanear o retroceder |
+
+### Detección de Atrapamiento
+
+- **Registra cada giro** (izquierda/derecha)
+- **Detecta 3+ giros consecutivos** del mismo lado
+- **Ejecuta escape 180°** automáticamente
+- **Resetea contador** cuando navega recto
+
+---
+
+## 🛣️ Rutas Web del Servidor
+
+### 📄 Archivos Estáticos
+- `GET /` → index.html
+- `GET /index.html` → Página principal
+- `GET /control.html` → Interfaz control manual
+
+### 🎮 Control Manual
+- `GET /forward?vel=50` → Adelante (50%)
+- `GET /backward?vel=50` → Atrás (50%)
+- `GET /left?vel=50` → Girar izquierda
+- `GET /right?vel=50` → Girar derecha
+- `GET /stop` → Detener motores
+- `GET /toggleControl?state=on|off` → Habilitar/deshabilitar control
+
+### 📊 Velocidades
+- `GET /getVelocidad` → Obtener velocidad manual actual
+- `GET /setVelocidad?valor=75` → Establecer velocidad manual
+- `GET /getSpeeds` → Obtener manual + autónoma
+- `GET /setSpeedLevel?mode=manual|autonomo&level=1|2|3` → Preset velocidad
+
+### 🤖 Modo Autónomo
+- `GET /setMode?mode=autonomo|manual` → Cambiar modo
+- `GET /startAutonomo` → Iniciar navegación autónoma
+- `GET /stopAutonomo` → Detener navegación
+- `GET /setPresetAutonomo?nivel=1|2|3` → Establecer límite máximo
+  - Nivel 1: 30% máximo (🐢 Lento)
+  - Nivel 2: 50% máximo (🚗 Normal)
+  - Nivel 3: 80% máximo (🚀 Rápido)
+- `GET /setVelocidadAutonomo?valor=60` → Velocidad actual (respeta límite)
+- `GET /getVelocidadesAutonomo` → Info velocidades
+
+### 📡 Sensores
+- `GET /ultrasonic` → {"front": cm, "left": cm, "right": cm}
+- `GET /mq135` → {"mq135": valor}
+- `GET /debugAutono` → JSON completo de estado autónomo
+
+### 🎛️ Actuadores
+- `GET /ventilador?state=on|off` → Encender/apagar ventilador
+- `GET /getVentilador` → Estado actual ventilador
+- `GET /setRealMode?active=1|0` → Modo real/simulación MQ135
+
+### 🚨 Emergencias
+- `GET /emergencyStop` → Parada total de emergencia
+
+---
+
+## 📚 API de Funciones Principales
+
+### motores.h
+```c
+void inicializarMotores();           // Setup de PWM
+void moverAdelante(int porcentaje);  // Navegar adelante
+void moverAtras(int porcentaje);     // Navegar atrás
+void girarIzquierda(int porcentaje); // Giro fuerte izq
+void girarDerecha(int porcentaje);   // Giro fuerte der
+void girarSuaveIzquierda();          // Corrección suave
+void girarSuaveDerecha();            // Corrección suave
+void detenerMotores();               // Stop
+void frenarSuave();                  // Desaceleración gradual
+void setVelocidad(int pct);          // Establecer velocidad (0-100%)
+int getVelocidad();                  // Obtener velocidad actual
+void setPresetSpeed(bool auton, int level);  // Presets (1..3)
+```
+
+### sensores.h
+```c
+void iniciarSensores();              // Setup ultrasónicos
+long medirDistanciaFront();           // Lectura frontal
+long medirDistanciaLeft();            // Lectura izquierda
+long medirDistanciaRight();           // Lectura derecha
+void guardarGiro(int dir);            // Registrar giro (0,1,2)
+int leerMQ135();                      // Lectura de gas
+void iniciarMQ135();                  // Setup MQ135
+```
+
+### modo_autonomo.h
+```c
+void ejecutarModoAutonomo(int mode); // Máquina de estados principal
+void iniciarModoAutonomo();           // Comenzar autonomía
+void detenerModoAutonomo();           // Parar autonomía
+bool estaAutonomoActivo();            // ¿Está activa?
+void setPresetVelocidadAutonoma(int preset);  // Límite máximo
+void setVelocidadAutonoma(int porcentaje);    // Velocidad actual
+int getVelocidadAutonoma();           // Obtener velocidad actual
+int getVelocidadMaximaAutonoma();     // Obtener límite
+String getAutonomoDebug();            // JSON debug
+```
+
+### servo_rele.h
+```c
+void iniciarServoYRele();             // Setup servo + relé
+void moverServo(int angulo);          // Ángulo libre (0-180)
+void moverServoIzquierda();           // Posición 40°
+void moverServoCentro();              // Posición 90°
+void moverServoDerecha();             // Posición 140°
+void barridoServo();                  // Barrido completo
+void encenderVentilador();            // ON relé
+void apagarVentilador();              // OFF relé
+void setVentilador(bool estado);      // Toggle
+```
+
+### mapa_espacios.h
+```c
+void inicializarMapa();               // Setup grid 20x20
+void actualizarMapaDesdeDistancias(); // Fusionar sensores
+void marcarCeldaVisitada(x, y, tipo, confianza);
+int contarCeldasLibres();             // Análisis
+int contarCeldasPeligrosas();         // Análisis
+bool existeRutaAlternativa();         // ¿Hay salida?
+void imprimirMapa();                  // Debug en serial
+void limpiarMapa();                   // Reset
+```
+
+---
+
+## 🚀 Cómo Usar
+
+### 1️⃣ Instalación del Firmware
+
+```bash
+# Clonar/descargar proyecto
+cd parts_car
+
+# Compilar
+pio run
+
+# Subir a ESP32
+pio run -t upload
+
+# Subir archivos web (SPIFFS)
+pio run -t uploadfs
+
+# Monitorear puerto serial
+pio device monitor --baud 115200
+```
+
+### 2️⃣ Conectar a WiFi
+
+El robot crea un **Punto de Acceso (AP)**:
+- **SSID**: `RobotESP32`
+- **Contraseña**: `12345678`
+- **IP**: `192.168.4.1`
+
+Conectar desde dispositivo → Abrir navegador → `http://192.168.4.1`
+
+### 3️⃣ Usar Interfaz Web
+
+**Página Principal** (`/index.html`):
+- Selector de Modo (Manual / Autónomo)
+- Botones de Control
+- Monitor de sensores en tiempo real
+- Selector de velocidad (presets 1-3)
+
+**Control Manual**:
+1. Cambiar a "Modo Manual"
+2. Seleccionar nivel de velocidad
+3. Usar botones o joystick para mover
+4. Botón STOP para detener
+
+**Modo Autónomo**:
+1. Cambiar a "Modo Autónomo"
+2. Seleccionar nivel máximo (🐢 / 🚗 / 🚀)
+3. Botón "INICIAR" para comenzar
+4. Botón "DETENER" para parar
+
+---
+
+## 🛠️ Cambios Recientes (Actualización 2026-05-25)
+
+✅ **motores.cpp**: Agregadas funciones faltantes
+- `girarSuaveIzquierda()` - Corrección con 60% motor izq
+- `girarSuaveDerecha()` - Corrección con 60% motor der
+- `frenarSuave()` - Desaceleración gradual en 50ms steps
+
+✅ **sensores.cpp**: Completadas variables y funciones
+- `memoriaGiros[10]` - Buffer de giros históricos
+- `guardarGiro(dir)` - Registra cada giro para detección
+- `indiceMemoria` - Índice circular de giros
+
+✅ **webserver_setup.cpp**: Mejorada lógica
+- Función `setSpeedLevel` actualizada con validación
+- Ruta `/getVentilador` nueva para estado
+- Comentarios mejorados
+
+✅ **sensores.h**: Declaraciones actualizadas
+- Exporta variables `memoriaGiros`, `indiceMemoria`, `giroConsecutivos`
+- Declara `guardarGiro()`
+
+---
+
+## ⚠️ Notas Técnicas
+
+### Limitaciones Actuales
+1. **pulseIn()** bloquea el loop durante mediciones
+   - Impacto mínimo en ESP32, pero considerar interrupciones para futuro
+   
+2. **Fragmentación de Heap**
+   - Uso intensivo de `String` en webserver
+   - Monitorear memoria en uso prolongado
+
+3. **SPIFFS limitado**
+   - Máx ~1.5 MB para archivos web
+   - Optimizar si se agregan recursos
+
+### Recomendaciones
+- 📌 Usar GND común entre todas las fuentes de alimentación
+- 📌 Proteger ESP32 con filtros de ruido
+- 📌 Calibrar sensores ultrasónicos antes de usar
+- 📌 Testear en espacios abiertos primero (mínimo 1m×1m)
+- 📌 Mantener batería entre 4.5V-5.2V para estabilidad
+
+---
+
+## 🐛 Depuración
+
+### Monitor Serial
+```
+Serial.begin(115200);
+// Ver todos los eventos del robot en tiempo real
+```
+
+### Ruta Debug
+```
+GET /debugAutono → JSON con estado completo
+```
+
+### Mapeo Visual
+```c
+imprimirMapa(); // Imprime grid ASCII en serial
+// R = Robot, · = Libre, ◐ = Peligrosa, █ = Bloqueada, * = Visitada
+```
+
+---
+
+## 📄 Licencia
+
+Proyecto educativo - Libre para modificar y distribuir
+
+---
+
+## 👤 Autor
+
+**milojeisonr** - 2026
+
+---
+
+## 🤝 Contribuciones
+
+Si encuentras bugs o tienes mejoras:
+1. Prueba los cambios localmente
+2. Documenta el problema/solución
+3. Sube un PR con descripción clara
+
+---
+
+**¡Feliz robótica! 🤖**
