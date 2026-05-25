@@ -22,6 +22,11 @@ int velocidadPorcentaje = 50;     // Velocidad en porcentaje (0–100)
 static const int presetsManual[3] = {30, 60, 90};
 static const int presetsAutonoma[3] = {30, 50, 80};
 
+// 🆕 Variables para giros suaves
+static int velocidadGiroSuave = 40;  // 40% de velocidad para giros suaves
+static const int TIEMPO_GIRO_SUAVE = 200;  // ms de giro suave
+static unsigned long inicioGiroSuave = 0;
+
 // ===== FUNCIONES =====
 
 // --- Ajustar velocidad desde web o joystick (0–100%) ---
@@ -118,4 +123,55 @@ void detenerMotores() {
   digitalWrite(IN4, LOW);
   ledcWrite(PWM_CH_A, 0);
   ledcWrite(PWM_CH_B, 0);
+}
+
+// 🆕 --- Giro suave a la izquierda (corrección de trayectoria) ---
+void girarSuaveIzquierda() {
+  int pwmSuave = map(velocidadGiroSuave, 0, 100, 0, 255);
+  ledcWrite(PWM_CH_A, pwmSuave);
+  ledcWrite(PWM_CH_B, pwmSuave);
+  
+  // Reducir velocidad del motor izquierdo para un giro suave
+  digitalWrite(IN1, HIGH);   // Motor izquierdo adelante (reducido)
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH);   // Motor derecho adelante (normal)
+  digitalWrite(IN4, LOW);
+  
+  // Reducir aún más el PWM del motor izquierdo
+  ledcWrite(PWM_CH_A, (pwmSuave * 60) / 100);  // 60% del motor izquierdo
+  
+  Serial.println("↙️ Giro suave izquierda");
+}
+
+// 🆕 --- Giro suave a la derecha (corrección de trayectoria) ---
+void girarSuaveDerecha() {
+  int pwmSuave = map(velocidadGiroSuave, 0, 100, 0, 255);
+  ledcWrite(PWM_CH_A, pwmSuave);
+  ledcWrite(PWM_CH_B, pwmSuave);
+  
+  // Reducir velocidad del motor derecho para un giro suave
+  digitalWrite(IN1, HIGH);   // Motor izquierdo adelante (normal)
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH);   // Motor derecho adelante (reducido)
+  digitalWrite(IN4, LOW);
+  
+  // Reducir aún más el PWM del motor derecho
+  ledcWrite(PWM_CH_B, (pwmSuave * 60) / 100);  // 60% del motor derecho
+  
+  Serial.println("↘️ Giro suave derecha");
+}
+
+// 🆕 --- Frenar suavemente (desaceleración gradual) ---
+void frenarSuave() {
+  // Desaceleración gradual del actual al 0
+  int pwmActual = velocidadPWM;
+  
+  for (int pwm = pwmActual; pwm >= 0; pwm -= 30) {
+    ledcWrite(PWM_CH_A, pwm);
+    ledcWrite(PWM_CH_B, pwm);
+    delay(50);  // 50ms entre pasos
+  }
+  
+  detenerMotores();
+  Serial.println("🛑 Frenado suave completado");
 }
